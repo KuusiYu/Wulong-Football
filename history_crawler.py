@@ -35,7 +35,9 @@ async def fetch_match_history(fid):
         # 创建aiohttp会话
         async with aiohttp.ClientSession() as session:
             # 发送请求
+            print(f"[调试] 请求历史数据URL: {url}")
             async with session.get(url, headers=headers, timeout=15, ssl=False) as response:
+                print(f"[调试] 响应状态码: {response.status}")
                 # 读取响应内容
                 content = await response.read()
                 
@@ -47,6 +49,7 @@ async def fetch_match_history(fid):
                         html = content.decode('gb2312')
                     except UnicodeDecodeError:
                         html = content.decode('utf-8')
+                print(f"[调试] 历史数据HTML内容长度: {len(html)} 字符, 前500字符: {html[:500]}...")
                 
                 # 解析HTML
                 soup = BeautifulSoup(html, 'html.parser')
@@ -174,18 +177,61 @@ async def fetch_match_history(fid):
                     # 尝试查找其他可能的两队交战史区域
                     team_jiaozhan = soup.find('div', class_='history')
                     if not team_jiaozhan:
+                        # 尝试查找包含"两队交战"文本的div
+                        all_divs = soup.find_all('div')
+                        for div in all_divs:
+                            if '两队交战' in div.text:
+                                team_jiaozhan = div
+                                print(f"通过包含'两队交战'文本的div找到两队交战史区域")
+                                break
+                    if not team_jiaozhan:
                         print(f"未找到两队交战史区域: {url}")
                         return history_data
+                
+                # 添加调试信息
+                print(f"找到两队交战史区域，开始分析结构")
+                print(f"team_jiaozhan的所有子元素数量: {len(team_jiaozhan.find_all(recursive=False))}")
+                
+                # 尝试找到所有h4标签
+                all_h4 = team_jiaozhan.find_all('h4')
+                print(f"两队交战史区域内找到{len(all_h4)}个h4标签")
+                for i, h4_tag in enumerate(all_h4):
+                    print(f"h4标签{i}内容: {h4_tag.text.strip()}")
+                
+                # 尝试找到所有span标签
+                all_span = team_jiaozhan.find_all('span')
+                print(f"两队交战史区域内找到{len(all_span)}个span标签")
+                for i, span_tag in enumerate(all_span):
+                    if span_tag.text.strip():
+                        print(f"span标签{i}内容: {span_tag.text.strip()}")
+                        if 'his_info' in span_tag.get('class', []):
+                            print(f"找到带有his_info类的span标签")
                 
                 # 提取比赛信息
                 title = team_jiaozhan.find('h4')
                 if title:
                     history_data['match_info'] = title.text.strip()
+                    print(f"成功提取match_info: {history_data['match_info']}")
+                else:
+                    # 尝试从其他标签提取
+                    strong_tag = team_jiaozhan.find('strong')
+                    if strong_tag:
+                        history_data['match_info'] = strong_tag.text.strip()
+                        print(f"从strong标签提取match_info: {history_data['match_info']}")
                 
                 # 提取统计信息
                 his_info = team_jiaozhan.find('span', class_='his_info')
                 if his_info:
                     history_data['stats'] = his_info.text.strip()
+                    print(f"成功提取stats: {history_data['stats']}")
+                else:
+                    # 尝试查找包含"胜"、"平"、"负"的文本
+                    all_text = team_jiaozhan.text
+                    stats_pattern = re.compile(r'(.*?胜.*?平.*?负.*?进.*?球失.*?球)')
+                    stats_match = stats_pattern.search(all_text)
+                    if stats_match:
+                        history_data['stats'] = stats_match.group(1)
+                        print(f"从文本中提取stats: {history_data['stats']}")
                 
                 # 提取历史比赛列表
                 table = team_jiaozhan.find('table', class_='pub_table')
