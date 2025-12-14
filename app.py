@@ -566,13 +566,17 @@ def update_matches():
         if st.session_state.update_by_date and st.session_state.selected_date:
             date_key = st.session_state.selected_date
             # 直接爬取数据，不使用缓存
-            matches = asyncio.run(crawl_matches_by_date(date_key))
+            loop = asyncio.new_event_loop()
+            matches = loop.run_until_complete(crawl_matches_by_date(date_key))
+            loop.close()
             # 根据日期判断是历史还是未来赛事
             current_date = time.strftime("%Y-%m-%d")
             st.session_state.is_historical = date_key < current_date
         else:
             # 直接爬取原始页面数据，不使用缓存
-            matches = asyncio.run(crawl_matches())
+            loop = asyncio.new_event_loop()
+            matches = loop.run_until_complete(crawl_matches())
+            loop.close()
             st.session_state.is_historical = False
         
         if matches:
@@ -779,7 +783,9 @@ if st.session_state.matches:
     def create_on_fetch_odds(fid):
         def on_fetch_odds():
             with st.spinner(f'正在获取比赛{fid}的赔率数据...'):
-                odds_data = asyncio.run(fetch_all_odds_data(fid))
+                loop = asyncio.new_event_loop()
+                odds_data = loop.run_until_complete(fetch_all_odds_data(fid))
+                loop.close()
                 st.session_state.odds_data[fid] = odds_data
         return on_fetch_odds
     
@@ -1121,7 +1127,9 @@ if st.session_state.matches:
                                 # 获取赔率数据
                                 with st.spinner('正在获取比赛' + row['fid'] + '的赔率数据...'):
                                     try:
-                                        odds_data = asyncio.run(fetch_all_odds_data(row['fid']))
+                                        loop = asyncio.new_event_loop()
+                                        odds_data = loop.run_until_complete(fetch_all_odds_data(row['fid']))
+                                        loop.close()
                                         st.session_state.odds_data[row['fid']] = odds_data
                                         if st.session_state.debug_mode:
                                             st.write(f"调试信息 - 赔率数据获取结果: {odds_data}")
@@ -1359,7 +1367,9 @@ if st.session_state.matches:
                             if f'history_data_{fid}' not in st.session_state:
                                 with st.spinner(f'正在获取比赛{fid}的双方历史交战记录...'):
                                     try:
-                                        history_data = asyncio.run(fetch_match_history(fid))
+                                        loop = asyncio.new_event_loop()
+                                        history_data = loop.run_until_complete(fetch_match_history(fid))
+                                        loop.close()
                                         st.session_state[f'history_data_{fid}'] = history_data
                                         if st.session_state.debug_mode:
                                             st.write(f"调试信息 - 历史数据获取结果: {history_data}")
@@ -2247,7 +2257,9 @@ if st.session_state.matches:
                                 with st.spinner(f'正在获取比赛{fid}的历史数据...'):
                                     try:
                                         # 异步获取比赛历史数据
-                                        history_data = asyncio.run(fetch_match_history(fid))
+                                        loop = asyncio.new_event_loop()
+                                        history_data = loop.run_until_complete(fetch_match_history(fid))
+                                        loop.close()
                                         st.session_state[f'history_data_{fid}'] = history_data
                                     except Exception as e:
                                         st.error(f'获取历史数据失败: {e}')
