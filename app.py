@@ -550,6 +550,8 @@ if 'matches' not in st.session_state:
     st.session_state.selected_date = None
     st.session_state.update_by_date = False
     st.session_state.is_historical = False
+    st.session_state.odds_data = {}
+    st.session_state.debug_mode = True  # 添加调试模式标志
 
 # 爬取函数（带会话状态更新）
 def update_matches():
@@ -1118,8 +1120,14 @@ if st.session_state.matches:
                             if row['fid'] not in st.session_state.odds_data:
                                 # 获取赔率数据
                                 with st.spinner('正在获取比赛' + row['fid'] + '的赔率数据...'):
-                                    odds_data = asyncio.run(fetch_all_odds_data(row['fid']))
-                                    st.session_state.odds_data[row['fid']] = odds_data
+                                    try:
+                                        odds_data = asyncio.run(fetch_all_odds_data(row['fid']))
+                                        st.session_state.odds_data[row['fid']] = odds_data
+                                        if st.session_state.debug_mode:
+                                            st.write(f"调试信息 - 赔率数据获取结果: {odds_data}")
+                                    except Exception as e:
+                                        st.error(f"获取赔率数据时出错: {str(e)}")
+                                        st.session_state.odds_data[row['fid']] = {'oupei': None, 'yapan': None, 'daxiao': None}
                             
                             # 获取最新的赔率数据
                             current_odds = st.session_state.odds_data.get(row['fid'], None)
@@ -1350,8 +1358,70 @@ if st.session_state.matches:
                             # 检查会话状态中是否已有该比赛的历史数据
                             if f'history_data_{fid}' not in st.session_state:
                                 with st.spinner(f'正在获取比赛{fid}的双方历史交战记录...'):
-                                    history_data = asyncio.run(fetch_match_history(fid))
-                                    st.session_state[f'history_data_{fid}'] = history_data
+                                    try:
+                                        history_data = asyncio.run(fetch_match_history(fid))
+                                        st.session_state[f'history_data_{fid}'] = history_data
+                                        if st.session_state.debug_mode:
+                                            st.write(f"调试信息 - 历史数据获取结果: {history_data}")
+                                    except Exception as e:
+                                        st.error(f"获取双方历史交战记录时出错: {str(e)}")
+                                        # 初始化空的历史数据结构
+                                        history_data = {
+                                            'match_info': '',
+                                            'stats': '',
+                                            'matches': [],
+                                            'average_data': {
+                                                'team_a': {
+                                                    'name': '',
+                                                    'rank': '',
+                                                    'average_goals': '',
+                                                    'average_goals_home': '',
+                                                    'average_goals_away': '',
+                                                    'average_conceded': '',
+                                                    'average_conceded_home': '',
+                                                    'average_conceded_away': ''
+                                                },
+                                                'team_b': {
+                                                    'name': '',
+                                                    'rank': '',
+                                                    'average_goals': '',
+                                                    'average_goals_home': '',
+                                                    'average_goals_away': '',
+                                                    'average_conceded': '',
+                                                    'average_conceded_home': '',
+                                                    'average_conceded_away': ''
+                                                }
+                                            },
+                                            'pre_match_standings': {
+                                                'title': '',
+                                                'team_a': {
+                                                    'name': '',
+                                                    'rank': '',
+                                                    'stats': {
+                                                        '总成绩': {},
+                                                        '主场': {},
+                                                        '客场': {}
+                                                    }
+                                                },
+                                                'team_b': {
+                                                    'name': '',
+                                                    'rank': '',
+                                                    'stats': {
+                                                        '总成绩': {},
+                                                        '主场': {},
+                                                        '客场': {}
+                                                    }
+                                                }
+                                            },
+                                            'recent_records_all': [],
+                                            'recent_records_home_away': {
+                                                'team_a_home': [],
+                                                'team_a_away': [],
+                                                'team_b_home': [],
+                                                'team_b_away': []
+                                            }
+                                        }
+                                        st.session_state[f'history_data_{fid}'] = history_data
                             else:
                                 history_data = st.session_state[f'history_data_{fid}']
                             
