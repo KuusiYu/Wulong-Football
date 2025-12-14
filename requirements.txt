@@ -3,5 +3,3 @@ aiohttp
 pandas
 scipy
 beautifulsoup4
-lxml
-fake-useragent
