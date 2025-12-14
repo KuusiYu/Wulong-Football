@@ -26,9 +26,7 @@ async def make_request_with_retries(url, headers, retries=MAX_RETRIES, delay=RET
     for attempt in range(retries):
         try:
             async with aiohttp.ClientSession() as session:
-                print(f"[调试] 尝试请求URL: {url}, 尝试次数: {attempt+1}/{retries}")
                 async with session.get(url, headers=headers, timeout=timeout, ssl=False) as response:
-                    print(f"[调试] 响应状态码: {response.status}, URL: {url}")
                     response.raise_for_status()
                     # 读取内容并手动处理编码
                     content = await response.read()
@@ -36,10 +34,8 @@ async def make_request_with_retries(url, headers, retries=MAX_RETRIES, delay=RET
                         text = content.decode('gb18030')
                     except UnicodeDecodeError:
                         text = content.decode('utf-8', errors='ignore')
-                    print(f"[调试] 获取到HTML内容长度: {len(text)} 字符, 前500字符: {text[:500]}...")
                     return text
-        except aiohttp.ClientError as e:
-            print(f"[调试] 请求失败: {e}, URL: {url}")
+        except aiohttp.ClientError:
             if attempt < retries - 1:
                 await asyncio.sleep(delay)
     return None
@@ -54,26 +50,19 @@ async def fetch_oupei_data(match_id):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     url = f'https://odds.500.com/fenxi/ouzhi-{match_id}.shtml'
-    print(f"[调试] 开始获取欧赔数据，match_id: {match_id}")
     res_text = await make_request_with_retries(url, headers)
-    if not res_text:
-        print(f"[调试] 获取欧赔数据失败，res_text为空，URL: {url}")
-        return None
-    if "百家欧赔" not in res_text:
-        print(f"[调试] HTML内容中未找到'百家欧赔'，URL: {url}")
+    if not res_text or "百家欧赔" not in res_text:
         return None
 
     try:
         soup = BeautifulSoup(res_text, 'lxml')
         data_table = soup.find('table', id='datatb')
         if not data_table:
-            print(f"[调试] 未找到ID为'datatb'的表格，URL: {url}")
             return None
 
         extracted_data = {}
-        company_rows = data_table.find_all('tr', id=re.compile(r'^\d+$'))
-        print(f"[调试] 找到{len(company_rows)}行公司数据")
 
+        company_rows = data_table.find_all('tr', id=re.compile(r'^\d+$'))
         for row in company_rows:
             company_td = row.find('td', class_='tb_plgs')
             if not company_td or not company_td.has_attr('title'):
@@ -90,10 +79,8 @@ async def fetch_oupei_data(match_id):
                         'initial': [d.get_text(strip=True) for d in initial_tds],
                         'instant': [d.get_text(strip=True) for d in instant_tds]
                     }
-        print(f"[调试] 成功提取欧赔数据，公司数量: {len(extracted_data)}")
         return extracted_data
-    except Exception as e:
-        print(f"[调试] 解析欧赔数据失败: {e}, URL: {url}")
+    except Exception:
         return None
 
 
@@ -106,26 +93,19 @@ async def fetch_yapan_data(match_id):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     url = f'https://odds.500.com/fenxi/yazhi-{match_id}.shtml'
-    print(f"[调试] 开始获取亚盘数据，match_id: {match_id}")
     res_text = await make_request_with_retries(url, headers)
-    if not res_text:
-        print(f"[调试] 获取亚盘数据失败，res_text为空，URL: {url}")
-        return None
-    if "亚盘对比" not in res_text:
-        print(f"[调试] HTML内容中未找到'亚盘对比'，URL: {url}")
+    if not res_text or "亚盘对比" not in res_text:
         return None
 
     try:
         soup = BeautifulSoup(res_text, 'lxml')
         data_table = soup.find('table', id='datatb')
         if not data_table:
-            print(f"[调试] 未找到ID为'datatb'的表格，URL: {url}")
             return None
 
         extracted_data = {}
-        company_rows = data_table.find_all('tr', id=re.compile(r'^\d+$'))
-        print(f"[调试] 找到{len(company_rows)}行公司数据")
 
+        company_rows = data_table.find_all('tr', id=re.compile(r'^\d+$'))
         for row in company_rows:
             try:
                 all_tds = row.find_all('td', recursive=False)
@@ -145,13 +125,10 @@ async def fetch_yapan_data(match_id):
                             'initial': initial_data,
                             'instant': instant_data
                         }
-            except (AttributeError, IndexError) as e:
-                print(f"[调试] 解析亚盘行数据失败: {e}")
+            except (AttributeError, IndexError):
                 continue
-        print(f"[调试] 成功提取亚盘数据，公司数量: {len(extracted_data)}")
         return extracted_data
-    except Exception as e:
-        print(f"[调试] 解析亚盘数据失败: {e}, URL: {url}")
+    except Exception:
         return None
 
 
@@ -164,26 +141,19 @@ async def fetch_daxiao_data(match_id):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     url = f'https://odds.500.com/fenxi/daxiao-{match_id}.shtml'
-    print(f"[调试] 开始获取大小球数据，match_id: {match_id}")
     res_text = await make_request_with_retries(url, headers)
-    if not res_text:
-        print(f"[调试] 获取大小球数据失败，res_text为空，URL: {url}")
-        return None
-    if "大小指数" not in res_text:
-        print(f"[调试] HTML内容中未找到'大小指数'，URL: {url}")
+    if not res_text or "大小指数" not in res_text:
         return None
 
     try:
         soup = BeautifulSoup(res_text, 'lxml')
         data_table = soup.find('table', id='datatb')
         if not data_table:
-            print(f"[调试] 未找到ID为'datatb'的表格，URL: {url}")
             return None
 
         extracted_data = {}
-        company_rows = data_table.find_all('tr', id=re.compile(r'^\d+$'))
-        print(f"[调试] 找到{len(company_rows)}行公司数据")
 
+        company_rows = data_table.find_all('tr', id=re.compile(r'^\d+$'))
         for row in company_rows:
             try:
                 all_tds = row.find_all('td', recursive=False)
@@ -203,13 +173,10 @@ async def fetch_daxiao_data(match_id):
                             'initial': initial_data,
                             'instant': instant_data
                         }
-            except (AttributeError, IndexError) as e:
-                print(f"[调试] 解析大小球行数据失败: {e}")
+            except (AttributeError, IndexError):
                 continue
-        print(f"[调试] 成功提取大小球数据，公司数量: {len(extracted_data)}")
         return extracted_data
-    except Exception as e:
-        print(f"[调试] 解析大小球数据失败: {e}, URL: {url}")
+    except Exception:
         return None
 
 
