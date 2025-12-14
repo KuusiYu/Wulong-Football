@@ -1,5 +1,5 @@
 streamlit
-aiohttp
 pandas
 scipy
 beautifulsoup4
+requests
