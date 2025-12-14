@@ -1,10 +1,7 @@
 streamlit
-re
-asyncio
 aiohttp
-random
 pandas
-time
 scipy
-ssl
-bs4
+beautifulsoup4
+lxml
+fake-useragent
