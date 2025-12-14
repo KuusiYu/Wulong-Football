@@ -1,6 +1,6 @@
-import asyncio
-import aiohttp
 import re
+import time
+import requests
 from bs4 import BeautifulSoup
 
 # 配置参数
@@ -19,29 +19,28 @@ def keep_only_chinese(text):
     return ''.join(chinese_chars)
 
 
-async def make_request_with_retries(url, headers, retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, timeout=15):
+def make_request_with_retries(url, headers, retries=MAX_RETRIES, delay=RETRY_DELAY_SECONDS, timeout=15):
     """
-    带有重试机制的异步请求函数。
+    带有重试机制的同步请求函数。
     """
     for attempt in range(retries):
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers, timeout=timeout, ssl=False) as response:
-                    response.raise_for_status()
-                    # 读取内容并手动处理编码
-                    content = await response.read()
-                    try:
-                        text = content.decode('gb18030')
-                    except UnicodeDecodeError:
-                        text = content.decode('utf-8', errors='ignore')
-                    return text
-        except aiohttp.ClientError:
+            response = requests.get(url, headers=headers, timeout=timeout, verify=False)
+            response.raise_for_status()
+            # 读取内容并手动处理编码
+            content = response.content
+            try:
+                text = content.decode('gb18030')
+            except UnicodeDecodeError:
+                text = content.decode('utf-8', errors='ignore')
+            return text
+        except requests.RequestException:
             if attempt < retries - 1:
-                await asyncio.sleep(delay)
+                time.sleep(delay)
     return None
 
 
-async def fetch_oupei_data(match_id):
+def fetch_oupei_data(match_id):
     """
     获取欧赔数据。
     """
@@ -50,7 +49,7 @@ async def fetch_oupei_data(match_id):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     url = f'https://odds.500.com/fenxi/ouzhi-{match_id}.shtml'
-    res_text = await make_request_with_retries(url, headers)
+    res_text = make_request_with_retries(url, headers)
     if not res_text or "百家欧赔" not in res_text:
         return None
 
@@ -84,7 +83,7 @@ async def fetch_oupei_data(match_id):
         return None
 
 
-async def fetch_yapan_data(match_id):
+def fetch_yapan_data(match_id):
     """
     获取亚盘数据。
     """
@@ -93,7 +92,7 @@ async def fetch_yapan_data(match_id):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     url = f'https://odds.500.com/fenxi/yazhi-{match_id}.shtml'
-    res_text = await make_request_with_retries(url, headers)
+    res_text = make_request_with_retries(url, headers)
     if not res_text or "亚盘对比" not in res_text:
         return None
 
@@ -132,7 +131,7 @@ async def fetch_yapan_data(match_id):
         return None
 
 
-async def fetch_daxiao_data(match_id):
+def fetch_daxiao_data(match_id):
     """
     获取大小球数据。
     """
@@ -141,7 +140,7 @@ async def fetch_daxiao_data(match_id):
         'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     }
     url = f'https://odds.500.com/fenxi/daxiao-{match_id}.shtml'
-    res_text = await make_request_with_retries(url, headers)
+    res_text = make_request_with_retries(url, headers)
     if not res_text or "大小指数" not in res_text:
         return None
 
@@ -180,17 +179,14 @@ async def fetch_daxiao_data(match_id):
         return None
 
 
-async def fetch_all_odds_data(match_id):
+def fetch_all_odds_data(match_id):
     """
     为单个ID获取所有赔率数据。
     """
-    # 并行获取所有赔率数据
-    oupei_task = fetch_oupei_data(match_id)
-    yapan_task = fetch_yapan_data(match_id)
-    daxiao_task = fetch_daxiao_data(match_id)
-    
-    # 等待所有任务完成
-    oupei_data, yapan_data, daxiao_data = await asyncio.gather(oupei_task, yapan_task, daxiao_task)
+    # 顺序获取所有赔率数据
+    oupei_data = fetch_oupei_data(match_id)
+    yapan_data = fetch_yapan_data(match_id)
+    daxiao_data = fetch_daxiao_data(match_id)
 
     return {
         'oupei': oupei_data,
