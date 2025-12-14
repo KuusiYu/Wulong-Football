@@ -1,4 +1,117 @@
-# Wulong Football 2.0.0
+# 乌龙足球数据分析系统
+
+一个基于Streamlit的足球比赛数据分析和预测系统，支持实时爬取比赛数据、赔率分析和预测展示。
+
+## 功能特性
+
+- 📊 **实时数据爬取**：自动从500.com获取最新的足球比赛数据
+- 🏆 **联赛筛选**：支持按联赛、比赛状态筛选比赛
+- 📈 **赔率展示**：提供欧赔、亚盘、大小球等赔率数据
+- 🎯 **预测分析**：基于历史数据和赔率提供比赛预测
+- 📅 **历史数据查询**：支持查询历史比赛数据
+- 📱 **响应式设计**：适配不同屏幕尺寸
+
+## 安装步骤
+
+### 1. 克隆仓库
+
+```bash
+git clone <your-repository-url>
+cd <repository-name>
+```
+
+### 2. 安装依赖
+
+使用pip安装项目依赖：
+
+```bash
+pip install -r requirements.txt
+```
+
+## 本地运行
+
+```bash
+python -m streamlit run app.py --server.headless=true
+```
+
+## 部署指南
+
+### Streamlit Cloud部署
+
+1. **创建GitHub仓库**
+   - 登录GitHub，创建一个新的仓库
+   - 将本地代码推送到GitHub仓库
+
+2. **部署到Streamlit Cloud**
+   - 访问 [Streamlit Cloud](https://streamlit.io/cloud)
+   - 点击"New app"
+   - 选择你的GitHub仓库
+   - 选择分支（通常是main/master）
+   - 设置主文件为 `app.py`
+   - 点击"Deploy"
+
+### Heroku部署
+
+1. **创建Heroku账号**
+   - 访问 [Heroku](https://www.heroku.com/) 并注册账号
+
+2. **安装Heroku CLI**
+   - 按照 [官方指南](https://devcenter.heroku.com/articles/heroku-cli) 安装Heroku CLI
+
+3. **部署应用**
+   ```bash
+   heroku login
+   heroku create <app-name>
+   git push heroku main
+   ```
+
+## 使用说明
+
+1. **查看实时比赛**：应用会自动爬取最新的比赛数据
+2. **筛选比赛**：使用左侧边栏按联赛、状态筛选比赛
+3. **查看赔率**：点击"详细数据"展开比赛详情，切换到"赔率"标签页
+4. **查看联赛数据**：切换到"联（杯）赛"标签页查看联赛相关数据
+5. **查看历史数据**：使用日期选择器选择历史日期查看历史比赛
+
+## 解决常见问题
+
+### 依赖安装错误
+
+如果遇到依赖安装错误，请确保使用正确的requirements.txt文件，并使用以下命令安装：
+
+```bash
+pip install -r requirements.txt
+```
+
+### Streamlit命令未识别
+
+如果遇到"streamlit: 无法将'streamlit'项识别为 cmdlet..."错误，请使用以下命令：
+
+```bash
+python -m streamlit run app.py --server.headless=true
+```
+
+### 数据全为0
+
+如果部署后数据全为0，可能是由于以下原因：
+1. 爬虫被目标网站限制：尝试刷新页面或等待一段时间后再试
+2. 网页结构发生变化：可能需要更新爬虫代码
+3. 网络问题：检查网络连接是否正常
+
+## 技术栈
+
+- Python 3.8+
+- Streamlit
+- aiohttp
+- BeautifulSoup4
+- pandas
+- scipy
+- lxml
+- fake-useragent
+
+## 许可证
+
+MIT License# Wulong Football 2.0.0
 
 一个足球赛事数据爬虫和可视化展示系统，使用Streamlit框架开发。
 
