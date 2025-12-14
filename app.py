@@ -42,23 +42,31 @@ async def crawl_matches_by_date(date_str):
     # 构建数据URL，该URL同时支持历史和未来日期
     url = f'https://live.500.com/wanchang.php?e={date_str}'
     
-    # 防封IP处理：使用随机User-Agent池
-    user_agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    ]
+    # 防封IP处理：使用动态User-Agent
+    try:
+        from fake_useragent import UserAgent
+        ua = UserAgent()
+        user_agent = ua.random
+    except Exception:
+        # 备用User-Agent池
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        ]
+        user_agent = random.choice(user_agents)
     
     headers = {
-        'User-Agent': random.choice(user_agents),
+        'User-Agent': user_agent,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
+        'Upgrade-Insecure-Requests': '1',
+        'Referer': 'https://live.500.com/'
     }
     
     # 防封IP处理：添加随机延迟（优化为更短时间）
@@ -84,11 +92,35 @@ async def crawl_matches_by_date(date_str):
                         # 最后尝试UTF-8编码
                         html = content.decode('utf-8')
                 
-                # 解析HTML
-                soup = BeautifulSoup(html, 'html.parser')
+                # 解析HTML - 使用lxml解析器提高解析能力
+                soup = BeautifulSoup(html, 'lxml')
                 
-                # 找到所有比赛行
+                # 获取页面标题用于调试
+                page_title = soup.title.string if soup.title else '未找到标题'
+                st.debug(f'页面标题: {page_title}')
+                st.debug(f'页面内容长度: {len(html)} 字符')
+                
+                # 多种方式查找比赛行，提高兼容性
+                match_rows = []
+                
+                # 方式1: 通过id属性查找（原始方式）
                 match_rows = soup.find_all('tr', attrs={'id': lambda x: x and x.startswith('a')})
+                st.debug(f'方式1找到的比赛行数: {len(match_rows)}')
+                
+                # 方式2: 如果方式1找不到，尝试通过class查找
+                if not match_rows:
+                    match_rows = soup.find_all('tr', class_='bet-tb-tr')
+                    st.debug(f'方式2找到的比赛行数: {len(match_rows)}')
+                
+                # 方式3: 如果方式2找不到，尝试查找所有可能的表格行
+                if not match_rows:
+                    tables = soup.find_all('table')
+                    for table in tables:
+                        rows = table.find_all('tr')
+                        for row in rows:
+                            if row.get('id') and row.get('id').startswith('a'):
+                                match_rows.append(row)
+                    st.debug(f'方式3找到的比赛行数: {len(match_rows)}')
                 
                 matches = []
                 
@@ -255,23 +287,31 @@ async def crawl_matches_by_date(date_str):
 async def crawl_matches():
     url = 'https://live.500.com/2h1.php'
     
-    # 防封IP处理：使用随机User-Agent池
-    user_agents = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-    ]
+    # 防封IP处理：使用动态User-Agent
+    try:
+        from fake_useragent import UserAgent
+        ua = UserAgent()
+        user_agent = ua.random
+    except Exception:
+        # 备用User-Agent池
+        user_agents = [
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.2 Safari/605.1.15',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        ]
+        user_agent = random.choice(user_agents)
     
     headers = {
-        'User-Agent': random.choice(user_agents),
+        'User-Agent': user_agent,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
         'Accept-Language': 'zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3',
         'Accept-Encoding': 'gzip, deflate',
         'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1'
+        'Upgrade-Insecure-Requests': '1',
+        'Referer': 'https://live.500.com/'
     }
     
     # 防封IP处理：添加随机延迟（优化为更短时间）
@@ -297,11 +337,35 @@ async def crawl_matches():
                         # 最后尝试UTF-8编码
                         html = content.decode('utf-8')
                 
-                # 解析HTML
-                soup = BeautifulSoup(html, 'html.parser')
+                # 解析HTML - 使用lxml解析器提高解析能力
+                soup = BeautifulSoup(html, 'lxml')
                 
-                # 找到所有比赛行
+                # 获取页面标题用于调试
+                page_title = soup.title.string if soup.title else '未找到标题'
+                st.debug(f'页面标题: {page_title}')
+                st.debug(f'页面内容长度: {len(html)} 字符')
+                
+                # 多种方式查找比赛行，提高兼容性
+                match_rows = []
+                
+                # 方式1: 通过id属性查找（原始方式）
                 match_rows = soup.find_all('tr', attrs={'id': lambda x: x and x.startswith('a')})
+                st.debug(f'方式1找到的比赛行数: {len(match_rows)}')
+                
+                # 方式2: 如果方式1找不到，尝试通过class查找
+                if not match_rows:
+                    match_rows = soup.find_all('tr', class_='bet-tb-tr')
+                    st.debug(f'方式2找到的比赛行数: {len(match_rows)}')
+                
+                # 方式3: 如果方式2找不到，尝试查找所有可能的表格行
+                if not match_rows:
+                    tables = soup.find_all('table')
+                    for table in tables:
+                        rows = table.find_all('tr')
+                        for row in rows:
+                            if row.get('id') and row.get('id').startswith('a'):
+                                match_rows.append(row)
+                    st.debug(f'方式3找到的比赛行数: {len(match_rows)}')
                 
                 matches = []
                 
